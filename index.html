@@ -1,1 +1,2051 @@
+<!DOCTYPE html>
+<html lang="ru">
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ГЛАДИАТОРЫ</title>
+  <script>
+    window.GLADIATORS_DEBUG_BOOT = new URLSearchParams(window.location.search).get('debug') === '1';
+    if (!window.GLADIATORS_DEBUG_BOOT) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Handjet:wght,ELSH@100..900,2&family=Press+Start+2P&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: #10251d;
+      color: #f3e7bd;
+      font-family: "Press Start 2P", system-ui;
+      touch-action: none;
+      user-select: none;
+      position: fixed;
+      inset: 0;
+    }
+
+    /* =========================
+       PLAYER HEADER / FOOTER
+       ========================= */
+
+    .player-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: #7e879f;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .player-header .ph-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #9eaf86;
+    }
+
+    .player-header .ph-name::before {
+      content: '▸';
+      color: #63b85b;
+      font-size: 8px;
+    }
+
+    .player-header .ph-energy {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #d6c997;
+    }
+
+    .player-header .ph-energy::before {
+      content: '⚡';
+      font-size: 10px;
+    }
+
+    .pioneer-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      padding: 6px 8px 4px;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: #31533f;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .pioneer-footer::before,
+    .pioneer-footer::after {
+      content: '☭';
+      font-size: 24px;
+      color: #31533f;
+    }
+
+    @media (max-width: 360px) {
+      .player-header {
+        padding: 12px 16px;
+        font-size: 9px;
+      }
+
+      .pioneer-footer {
+        font-size: 8px;
+        letter-spacing: 1.5px;
+        padding: 10px 12px 14px;
+        gap: 6px;
+      }
+
+      .pioneer-footer::before,
+      .pioneer-footer::after {
+        font-size: 12px;
+      }
+    }
+
+    .debug-label {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #63b85b;
+      font-size: 8px;
+      letter-spacing: 2px;
+      z-index: 15;
+    }
+
+    /* =========================
+       GAME LAYOUT
+       ========================= */
+
+    #game {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #10251d;
+      background-image: radial-gradient(#31533f 1px, transparent 1px);
+      background-size: 5px 5px;
+      display: none;
+      flex-direction: column;
+    }
+
+    #game.visible {
+      display: flex;
+    }
+
+    #game.shake {
+      animation: shakeEffect .24s ease-out;
+    }
+
+    @keyframes shakeEffect {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-7px);
+      }
+
+      50% {
+        transform: translateX(7px);
+      }
+
+      75% {
+        transform: translateX(-4px);
+      }
+    }
+
+    /* =========================
+       ARENA
+       ========================= */
+
+    #arena {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+      margin-top: 44px;
+    }
+
+    .corner {
+      position: absolute;
+      width: 44%;
+      max-width: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 2;
+    }
+
+    .corner.left {
+      left: 10px;
+      top: 8px;
+      align-items: flex-start;
+    }
+
+    .corner.right {
+      right: 10px;
+      bottom: 6px;
+      align-items: flex-end;
+    }
+
+    .g-name {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #f3e7bd;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 0 #07120d;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .g-hp-bar {
+      width: 100%;
+      height: 10px;
+      background: #17221c;
+      border-radius: 0;
+      overflow: hidden;
+      border: 2px solid #f3e7bd;
+      box-shadow: 3px 3px 0 #07120d;
+    }
+
+    .g-hp-fill {
+      height: 100%;
+      width: 100%;
+      background: #e95732;
+      transition: width .22s steps(8, end);
+    }
+
+    .g-hp-text {
+      font-size: 8px;
+      color: #9eaf86;
+      letter-spacing: 1px;
+    }
+
+    .monster-img {
+      width: min(40vw, 210px);
+      height: min(40vw, 210px);
+      object-fit: contain;
+      pointer-events: none;
+      opacity: 0.85;
+      image-rendering: pixelated;
+    }
+
+    .corner.right .monster-img {
+      transform: scaleX(-1);
+    }
+
+    /* Мало HP — монстр трясется и краснеет */
+    .monster-img.low-hp {
+      filter: sepia(.45) saturate(3.2) hue-rotate(-25deg) brightness(.95) drop-shadow(0 0 8px rgba(233, 87, 50, .65));
+    }
+
+    .corner.left .monster-img.low-hp {
+      animation: lowHpShake .45s infinite;
+    }
+
+    .corner.right .monster-img.low-hp {
+      animation: lowHpShakeFlip .45s infinite;
+    }
+
+    @keyframes lowHpShake {
+
+      0%,
+      100% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+
+      20% {
+        transform: translate(-2px, 1px) rotate(-1.5deg);
+      }
+
+      40% {
+        transform: translate(2px, -1px) rotate(1.5deg);
+      }
+
+      60% {
+        transform: translate(-1.5px, -1px) rotate(-1deg);
+      }
+
+      80% {
+        transform: translate(1.5px, 1px) rotate(1deg);
+      }
+    }
+
+    @keyframes lowHpShakeFlip {
+
+      0%,
+      100% {
+        transform: scaleX(-1) translate(0, 0) rotate(0deg);
+      }
+
+      20% {
+        transform: scaleX(-1) translate(-2px, 1px) rotate(-1.5deg);
+      }
+
+      40% {
+        transform: scaleX(-1) translate(2px, -1px) rotate(1.5deg);
+      }
+
+      60% {
+        transform: scaleX(-1) translate(-1.5px, -1px) rotate(-1deg);
+      }
+
+      80% {
+        transform: scaleX(-1) translate(1.5px, 1px) rotate(1deg);
+      }
+    }
+
+    .corner.left .monster-img.lunge {
+      animation: lungeLeft .42s ease-out;
+    }
+
+    .corner.right .monster-img.lunge {
+      animation: lungeRight .42s ease-out;
+    }
+
+    .corner.left .monster-img.lunge.fast,
+    .corner.right .monster-img.lunge.fast {
+      animation-duration: .14s;
+    }
+
+    @keyframes lungeLeft {
+      0% {
+        transform: translate(0, 0);
+      }
+
+      35% {
+        transform: translate(26px, 6px) scale(1.05);
+        filter: brightness(1.3);
+      }
+
+      100% {
+        transform: translate(0, 0);
+      }
+    }
+
+    @keyframes lungeRight {
+      0% {
+        transform: scaleX(-1) translate(0, 0);
+      }
+
+      35% {
+        transform: scaleX(-1) translate(26px, -8px) scale(1.05);
+        filter: brightness(1.3);
+      }
+
+      100% {
+        transform: scaleX(-1) translate(0, 0);
+      }
+    }
+
+    .corner.left .monster-img.hit {
+      animation: monsterHit .24s ease-out;
+    }
+
+    .corner.right .monster-img.hit {
+      animation: monsterHitFlip .24s ease-out;
+    }
+
+    @keyframes monsterHit {
+      0% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+
+      25% {
+        transform: scale(.96) translateX(-5px);
+        filter: brightness(1.7) sepia(.4) hue-rotate(-30deg);
+      }
+
+      50% {
+        transform: scale(1.03) translateX(5px);
+        filter: brightness(1.25);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes monsterHitFlip {
+      0% {
+        transform: scaleX(-1) scale(1);
+        filter: brightness(1);
+      }
+
+      25% {
+        transform: scaleX(-1) scale(.96) translateX(-5px);
+        filter: brightness(1.7) sepia(.4) hue-rotate(-30deg);
+      }
+
+      50% {
+        transform: scaleX(-1) scale(1.03) translateX(5px);
+        filter: brightness(1.25);
+      }
+
+      100% {
+        transform: scaleX(-1) scale(1);
+      }
+    }
+
+    .corner.left .monster-img.death {
+      animation:
+        monsterShake 0.09s linear 14,
+        monsterFadeOut 1.25s ease-out forwards;
+    }
+
+    .corner.right .monster-img.death {
+      animation:
+        monsterShakeFlip 0.09s linear 14,
+        monsterFadeOut 1.25s ease-out forwards;
+    }
+
+    @keyframes monsterShake {
+
+      0%,
+      100% {
+        transform: translate(0, 0);
+      }
+
+      20% {
+        transform: translate(-4px, -3px);
+      }
+
+      40% {
+        transform: translate(4px, 2px);
+      }
+
+      60% {
+        transform: translate(-3px, 4px);
+      }
+
+      80% {
+        transform: translate(3px, -3px);
+      }
+    }
+
+    @keyframes monsterShakeFlip {
+
+      0%,
+      100% {
+        transform: scaleX(-1) translate(0, 0);
+      }
+
+      20% {
+        transform: scaleX(-1) translate(-4px, -3px);
+      }
+
+      40% {
+        transform: scaleX(-1) translate(4px, 2px);
+      }
+
+      60% {
+        transform: scaleX(-1) translate(-3px, 4px);
+      }
+
+      80% {
+        transform: scaleX(-1) translate(3px, -3px);
+      }
+    }
+
+    @keyframes monsterFadeOut {
+      0% {
+        opacity: 0.85;
+      }
+
+      40% {
+        opacity: 0.65;
+        filter: grayscale(.4);
+      }
+
+      70% {
+        opacity: 0.4;
+        filter: grayscale(.8);
+      }
+
+      90% {
+        opacity: 0.15;
+      }
+
+      100% {
+        opacity: 0;
+        filter: grayscale(1);
+      }
+    }
+
+    .corner.left .monster-img.winner {
+      animation: winnerBounce .6s ease-in-out 3;
+    }
+
+    .corner.right .monster-img.winner {
+      animation: winnerBounceFlip .6s ease-in-out 3;
+    }
+
+    @keyframes winnerBounce {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      40% {
+        transform: translateY(-14px) scale(1.06);
+        filter: brightness(1.25);
+      }
+    }
+
+    @keyframes winnerBounceFlip {
+
+      0%,
+      100% {
+        transform: scaleX(-1) translateY(0);
+      }
+
+      40% {
+        transform: scaleX(-1) translateY(-14px) scale(1.06);
+        filter: brightness(1.25);
+      }
+    }
+
+    .damage-float {
+      position: absolute;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #e95732;
+      text-shadow: 2px 2px 0 #07120d;
+      pointer-events: none;
+      z-index: 20;
+      animation: damageFloat .8s ease-out forwards;
+      white-space: nowrap;
+    }
+
+    .damage-float.shield {
+      color: #9eaf86;
+      font-size: 13px;
+    }
+
+    @keyframes damageFloat {
+      0% {
+        opacity: 0;
+        transform: translateY(6px) scale(.7);
+      }
+
+      20% {
+        opacity: 1;
+        transform: translateY(-4px) scale(1.15);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(-34px) scale(1);
+      }
+    }
+
+    #vs {
+      position: absolute;
+      left: 50%;
+      top: 25%;
+      transform: translate(-50%, 0);
+      font-size: clamp(18px, 6vw, 30px);
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #e95732;
+      text-shadow:
+        3px 3px 0 #07120d,
+        -2px -2px 0 rgba(243, 231, 189, .25);
+      z-index: 3;
+      pointer-events: none;
+      animation: vsIdle .7s steps(1, end) infinite;
+    }
+
+    @keyframes vsIdle {
+
+      0%,
+      100% {
+        transform: translate(-50%, 0) scale(1) rotate(-5deg);
+      }
+
+      50% {
+        transform: translate(-50%, 0) scale(1.05) rotate(5deg);
+      }
+    }
+
+    #vs.pulse {
+      animation: vsPulse .3s ease-out;
+    }
+
+    @keyframes vsPulse {
+      0% {
+        transform: translate(-50%, 0) scale(1);
+        filter: brightness(1);
+      }
+
+      30% {
+        transform: translate(-50%, 0) scale(1.45) rotate(-4deg);
+        filter: brightness(2);
+      }
+
+      100% {
+        transform: translate(-50%, 0) scale(1);
+        filter: brightness(1);
+      }
+    }
+
+    /* =========================
+       BATTLE LOG
+       ========================= */
+
+    #battle-log {
+      flex-basis: 22dvh;
+      height: 22dvh;
+      min-height: 110px;
+      margin: 6px 14px 0 14px;
+      padding: 10px 12px;
+      overflow-y: auto;
+      touch-action: pan-y;
+      color: #9eaf86;
+      font-size: 9px;
+      letter-spacing: .5px;
+      line-height: 1.7;
+      border: 2px solid #31533f;
+      background: #0d1f18;
+      box-shadow: 6px 6px 0 #07120d;
+      z-index: 5;
+    }
+
+    #battle-log .log-entry {
+      padding: 6px 0;
+      border-bottom: 1px dashed #1c3a2c;
+      text-transform: none;
+    }
+
+    #battle-log .log-entry:last-child {
+      border-bottom: 0;
+    }
+
+    #battle-log code {
+      color: #e7d79e;
+      font-family: "Press Start 2P", system-ui;
+      font-size: 8px;
+    }
+
+    #battle-log blockquote {
+      border-left: 3px solid #31533f;
+      padding-left: 8px;
+      margin: 4px 0;
+      color: #7e879f;
+    }
+
+    #battle-log i {
+      color: #7e879f;
+    }
+
+    /* =========================
+       CONTROLS
+       ========================= */
+
+    #controls {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 12px 14px 34px 14px;
+      z-index: 5;
+    }
+
+    #fight-btn {
+      width: 100%;
+      padding: 15px 24px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: #e7d79e;
+      border: 3px solid #f3e7bd;
+      color: #10251d;
+      border-radius: 0;
+      box-shadow: 5px 5px 0 #07120d;
+      font-weight: 900;
+      font-family: "Press Start 2P", system-ui;
+      position: relative;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition:
+        background-color .12s steps(2, end),
+        color .12s steps(2, end),
+        transform .08s steps(2, end),
+        box-shadow .08s steps(2, end),
+        filter .12s steps(2, end);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      #fight-btn:not(:disabled):hover {
+        background: #f3e7bd;
+        color: #10251d;
+        border-color: #fff5cf;
+        transform: translate(-2px, -2px);
+        box-shadow: 7px 7px 0 #07120d, 0 0 0 2px rgba(99, 184, 91, .15);
+        filter: brightness(1.04);
+      }
+    }
+
+    #fight-btn:not(:disabled):active {
+      transform: translate(3px, 3px);
+      box-shadow: 1px 1px 0 #07120d;
+      background: #d6c997;
+      border-color: #e7d79e;
+      filter: brightness(.94);
+    }
+
+    #fight-btn:disabled {
+      opacity: .45;
+      cursor: default;
+      filter: grayscale(.5);
+      transform: none;
+      box-shadow: 3px 3px 0 #07120d;
+    }
+
+    #skip-btn {
+      width: 100%;
+      align-self: center;
+      position: relative;
+      background: #10251d;
+      color: #e7d79e;
+      border: 0;
+      box-shadow: none;
+      padding: 8px 34px;
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-family: "Press Start 2P", system-ui;
+      font-weight: 900;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition:
+        background-color .12s steps(2, end),
+        color .12s steps(2, end),
+        border-color .12s steps(2, end),
+        transform .08s steps(2, end),
+        box-shadow .08s steps(2, end),
+        filter .12s steps(2, end);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      #skip-btn:not(:disabled):hover {
+        color: #fff5cf;
+        background: #173429;
+        transform: translate(-1px, -1px);
+        box-shadow: 4px 4px 0 #07120d;
+      }
+    }
+
+    #skip-btn:not(:disabled):active {
+      transform: translate(2px, 2px);
+      box-shadow: none;
+      background: #0b1b14;
+      color: #f3e7bd;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      #skip-btn:not(:disabled):active {
+        transform: translate(2px, 2px) scale(.98);
+        box-shadow: none;
+      }
+    }
+
+    #skip-btn:disabled {
+      opacity: .45;
+      cursor: default;
+      filter: grayscale(.5);
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* =========================
+       NOTIFICATION / FLASH
+       ========================= */
+
+    #notification {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: var(--notif-size, 24px);
+      font-weight: 900;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      opacity: 0;
+      pointer-events: none;
+      text-shadow: 3px 3px 0 #07120d;
+      white-space: nowrap;
+      z-index: 30;
+    }
+
+    #notification.show {
+      animation: notifyPulse .72s ease-out;
+    }
+
+    @keyframes notifyPulse {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(.55);
+      }
+
+      18% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.12);
+      }
+
+      75% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(.92);
+      }
+    }
+
+    #flash-overlay {
+      position: fixed;
+      inset: 0;
+      background: #63b85b;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #flash-overlay.flash {
+      animation: flashEffect .25s ease-out;
+    }
+
+    @keyframes flashEffect {
+      0% {
+        opacity: .42;
+      }
+
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* =========================
+       OVERLAYS
+       ========================= */
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: #10251d;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .overlay.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .overlay h1 {
+      font-size: 42px;
+      letter-spacing: 7px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    #arena-intro h1 {
+      font-size: 26px;
+      letter-spacing: 5px;
+      text-align: center;
+      color: #e95732;
+      text-shadow: 3px 3px 0 #07120d;
+      margin-bottom: 16px;
+    }
+
+    .intro-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .intro-actions button {
+      min-width: 220px;
+    }
+
+    #result-overlay h1 {
+      color: #63b85b;
+      text-shadow: 4px 4px 0 #07120d;
+      font-size: 26px;
+      letter-spacing: 5px;
+      margin-bottom: 24px;
+      text-align: center;
+      transform-origin: center center;
+    }
+
+    #result-overlay h1.draw {
+      color: #e95732;
+    }
+
+    #result-overlay h1.celebrate {
+      animation: victoryCelebrate 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes victoryCelebrate {
+      0% {
+        transform: scale(0.3) rotate(-15deg);
+        opacity: 0;
+      }
+
+      25% {
+        transform: scale(1.35) rotate(4deg);
+        opacity: 1;
+      }
+
+      40% {
+        transform: scale(0.95) rotate(-3deg);
+      }
+
+      55% {
+        transform: scale(1.15) rotate(2deg);
+      }
+
+      70% {
+        transform: scale(0.98) rotate(-1deg);
+      }
+
+      85% {
+        transform: scale(1.05) rotate(0.5deg);
+      }
+
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    .result {
+      color: #7e879f;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      line-height: 2;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .overlay button {
+      padding: 15px 34px;
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: #e7d79e;
+      border: 3px solid #f3e7bd;
+      color: #10251d;
+      border-radius: 0;
+      box-shadow: 5px 5px 0 #07120d;
+      font-weight: 900;
+      font-family: "Press Start 2P", system-ui;
+      position: relative;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition:
+        background-color .12s steps(2, end),
+        color .12s steps(2, end),
+        border-color .12s steps(2, end),
+        transform .08s steps(2, end),
+        box-shadow .08s steps(2, end),
+        filter .12s steps(2, end);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .overlay button:not(:disabled):hover {
+        background: #f3e7bd;
+        color: #10251d;
+        border-color: #fff5cf;
+        transform: translate(-2px, -2px);
+        box-shadow: 7px 7px 0 #07120d, 0 0 0 2px rgba(99, 184, 91, .15);
+        filter: brightness(1.04);
+      }
+    }
+
+    .overlay button:not(:disabled):active {
+      transform: translate(3px, 3px);
+      box-shadow: 1px 1px 0 #07120d;
+      background: #d6c997;
+      border-color: #e7d79e;
+      filter: brightness(.94);
+    }
+
+    .overlay button:disabled {
+      opacity: .45;
+      cursor: default;
+      filter: grayscale(.5);
+      transform: none;
+      box-shadow: 3px 3px 0 #07120d;
+    }
+
+    #result-exit-btn,
+    #intro-exit-btn {
+      background: #10251d;
+      color: #e7d79e;
+      border: 0;
+      box-shadow: none;
+      padding: 8px 34px;
+      margin-top: 8px;
+    }
+
+    /* =========================
+       DOSSIER (RESULT CARD)
+       ========================= */
+
+    .dossier-wrapper {
+      position: relative;
+      max-width: min(85vw, 360px);
+      margin: 10px auto 0 auto;
+    }
+
+    .dossier-pin {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 10px;
+      height: 10px;
+      margin-top: 12px;
+      background: #a83828;
+      box-shadow:
+        2px 2px 0 #07120d,
+        inset -2px -2px 0 #7a2818,
+        inset 2px 2px 0 #c84838;
+      z-index: 1;
+    }
+
+    .monster-encounter {
+      position: relative;
+      color: #f3e7bd;
+      font-size: 11px;
+      letter-spacing: 1px;
+      line-height: 1.6;
+      text-align: left;
+      margin: 10px auto 0 auto;
+      padding: 28px 20px 20px 24px;
+      border: 2px solid #31533f;
+      background: #0d1f18;
+      box-shadow: 6px 6px 0 #07120d;
+      max-width: min(85vw, 360px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      clip-path: polygon(34px 0, 100% 0,
+          100% 100%, 0 100%,
+          0 34px);
+    }
+
+    .encounter-content {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .dossier-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .dossier-label {
+      color: #e95732;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+
+    .m-name {
+      color: #f3e7bd;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 2px 2px 0 #07120d;
+      min-height: 24px;
+    }
+
+    .m-desc {
+      color: #9eaf86;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      line-height: 1.5;
+      text-transform: none;
+      min-height: 40px;
+      max-height: 30dvh;
+      overflow-y: auto;
+    }
+
+    .m-desc code {
+      color: #e7d79e;
+      font-size: 9px;
+    }
+
+    .m-desc blockquote {
+      border-left: 3px solid #31533f;
+      padding-left: 8px;
+      margin: 4px 0;
+      color: #7e879f;
+    }
+
+    .encounter-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px dashed #31533f;
+    }
+
+    /* =========================
+       LOADING SCREEN
+       ========================= */
+
+    #battle-loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #10251d;
+      color: #f3e7bd;
+      text-align: center;
+    }
+
+    #battle-loading-screen.hidden {
+      display: none;
+    }
+
+    .loading-header {
+      margin: 0 auto 30px auto;
+      text-align: justify;
+    }
+
+    .battle-loading-title {
+      display: block;
+      width: 100%;
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #f3e7bd;
+      text-shadow: 4px 4px 0 #07120d;
+      text-align: justify;
+      text-align-last: justify;
+    }
+
+    .battle-loading-subtitle {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 700;
+      text-transform: lowercase;
+      color: #9eaf86;
+      text-shadow: 2px 2px 0 #07120d;
+      text-align-last: center;
+      letter-spacing: 13.7px;
+    }
+
+    .battle-loading-progress {
+      position: relative;
+      width: min(78vw, 520px);
+      height: 56px;
+      background: #17221c;
+      border: 3px solid #f3e7bd;
+      box-shadow: 5px 5px 0 #07120d;
+      overflow: hidden;
+      margin: 0 auto;
+    }
+
+    .battle-loading-progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      background: #e7d79e;
+    }
+
+    .battle-loading-progress-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 10px;
+      pointer-events: none;
+      background: linear-gradient(90deg,
+          #10251d 0%,
+          #10251d var(--progress, 0%),
+          #e7d79e var(--progress, 0%),
+          #e7d79e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: none;
+    }
+
+    @media (max-width: 360px) {
+      .loading-header {
+        width: 85vw;
+      }
+
+      .battle-loading-title {
+        font-size: 26px;
+      }
+
+      .battle-loading-subtitle {
+        font-size: 12px;
+      }
+
+      .battle-loading-progress {
+        height: 50px;
+      }
+
+      .battle-loading-progress-text {
+        font-size: 18px;
+        letter-spacing: 4px;
+      }
+    }
+
+    @media (max-height: 620px) {
+      #battle-log {
+        flex-basis: 18dvh;
+        height: 18dvh;
+        min-height: 84px;
+      }
+
+      .monster-img {
+        width: min(34vw, 160px);
+        height: min(34vw, 160px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="battle-loading-screen">
+    <div class="loading-header">
+      <div class="battle-loading-title">ГЛАДИАТОРЫ</div>
+      <div class="battle-loading-subtitle">арена</div>
+    </div>
+
+    <div class="battle-loading-progress">
+      <div class="battle-loading-progress-fill"></div>
+      <div class="battle-loading-progress-text">ЗАГРУЗКА</div>
+    </div>
+
+    <div class="pioneer-footer">OOO «Пионерлагерь Ромашка»</div>
+  </div>
+
+  <div id="arena-intro" class="overlay">
+    <div class="player-header">
+      <div class="ph-name" id="intro-player-name">—</div>
+      <div class="ph-energy" id="intro-player-energy">—</div>
+    </div>
+
+    <h1>ГЛАДИАТОРЫ</h1>
+    <div class="result">Два бедолаги ждут сигнала<br>Кто кого переломи?</div>
+
+    <div class="intro-actions">
+      <button id="arena-start-btn">НА АРЕНУ!</button>
+      <button id="intro-exit-btn">Выйти</button>
+    </div>
+
+    <div class="pioneer-footer">OOO «Пионерлагерь Ромашка»</div>
+  </div>
+
+  <div id="game">
+    <div class="player-header">
+      <div class="ph-name" id="game-player-name">—</div>
+      <div class="ph-energy" id="game-player-energy">—</div>
+    </div>
+    <div id="debug-label" class="debug-label" hidden></div>
+
+    <div id="arena">
+      <div class="corner left">
+        <div class="g-name" id="g1-name">—</div>
+        <div class="g-hp-bar">
+          <div class="g-hp-fill" id="g1-hp-fill"></div>
+        </div>
+        <div class="g-hp-text" id="g1-hp-text">—</div>
+        <img class="monster-img" id="g1-img" alt="" />
+      </div>
+
+      <div id="vs">VS</div>
+
+      <div class="corner right">
+        <div class="g-name" id="g2-name">—</div>
+        <div class="g-hp-bar">
+          <div class="g-hp-fill" id="g2-hp-fill"></div>
+        </div>
+        <div class="g-hp-text" id="g2-hp-text">—</div>
+        <img class="monster-img" id="g2-img" alt="" />
+      </div>
+    </div>
+
+    <div id="battle-log"></div>
+
+    <div id="controls">
+      <button id="fight-btn">⚔️ В БОЙ!</button>
+      <button id="skip-btn">Пропустить</button>
+    </div>
+
+    <div id="notification"></div>
+    <div id="flash-overlay"></div>
+
+    <div class="pioneer-footer">OOO «Пионерлагерь Ромашка»</div>
+  </div>
+
+  <div id="result-overlay" class="overlay">
+    <div class="player-header">
+      <div class="ph-name" id="result-player-name">—</div>
+      <div class="ph-energy" id="result-player-energy">—</div>
+    </div>
+
+    <h1 id="result-title">ПОБЕДИТЕЛЬ!</h1>
+
+    <div class="dossier-wrapper">
+      <div class="dossier-pin"></div>
+      <div class="monster-encounter">
+        <div class="encounter-content">
+          <div class="dossier-row">
+            <span class="dossier-label">[ЧЕМПИОН АРЕНЫ]:</span>
+            <span class="m-name" id="result-winner-name"></span>
+          </div>
+          <div class="dossier-row">
+            <span class="dossier-label">[ИТОГ БОЯ]:</span>
+            <span class="m-desc" id="result-text"></span>
+          </div>
+        </div>
+        <div class="encounter-actions">
+          <button id="again-btn">Ещё бой</button>
+          <button id="result-exit-btn">Выйти</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pioneer-footer">OOO «Пионерлагерь Ромашка»</div>
+  </div>
+
+  <script>
+    'use strict';
+    const DEBUG_MODE = Boolean(window.GLADIATORS_DEBUG_BOOT);
+    const tg = DEBUG_MODE ? null : (window.Telegram?.WebApp || null);
+    if (!DEBUG_MODE && tg) { tg.ready(); tg.expand(); }
+
+    window.BATTLE_API_URL = window.BATTLE_API_URL || "https://jesterapi.ddns.net";
+
+    const initData = DEBUG_MODE ? '' : (tg?.initData || '');
+
+    async function loadEnvConfig() {
+      try {
+        const response = await fetch('/.env');
+        if (response.ok) {
+          const text = await response.text();
+          const lines = text.split('\n');
+          for (const line of lines) {
+            const match = line.match(/^\s*BATTLE_API_URL\s*=\s*(.+?)\s*$/);
+            if (match) {
+              window.BATTLE_API_URL = match[1].replace(/^["']|["']$/g, '');
+              console.log("✅ BATTLE_API_URL загружен из .env:", window.BATTLE_API_URL);
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ Файл .env не найден. Используется значение по умолчанию.");
+      } finally {
+        if (window.BATTLE_API_URL) {
+          window.BATTLE_API_URL = window.BATTLE_API_URL.replace(/\/$/, "");
+        }
+      }
+    }
+
+    async function apiRequest(path, options = {}) {
+      if (DEBUG_MODE) throw new Error('API is disabled in debug mode');
+      if (!initData) throw new Error('Откройте игру внутри Telegram WebApp: initData отсутствует. Для автономного теста добавьте ?debug=1.');
+      const response = await fetch(`${window.BATTLE_API_URL}${path}`, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(options.headers || {}) }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = typeof payload.detail === 'string' ? payload.detail : (payload.detail?.message || `HTTP ${response.status}`);
+        const error = new Error(detail);
+        error.code = payload.detail?.code;
+        throw error;
+      }
+      return payload;
+    }
+
+    // ==================== ЭЛЕМЕНТЫ ====================
+    const els = {
+      loading: document.getElementById('battle-loading-screen'),
+      intro: document.getElementById('arena-intro'),
+      game: document.getElementById('game'),
+      arena: document.getElementById('arena'),
+      vs: document.getElementById('vs'),
+      log: document.getElementById('battle-log'),
+      fightBtn: document.getElementById('fight-btn'),
+      skipBtn: document.getElementById('skip-btn'),
+      notification: document.getElementById('notification'),
+      flash: document.getElementById('flash-overlay'),
+      debugLabel: document.getElementById('debug-label'),
+      resultOverlay: document.getElementById('result-overlay'),
+      resultTitle: document.getElementById('result-title'),
+      resultWinner: document.getElementById('result-winner-name'),
+      resultText: document.getElementById('result-text'),
+      corners: [
+        {
+          name: document.getElementById('g1-name'),
+          hpFill: document.getElementById('g1-hp-fill'),
+          hpText: document.getElementById('g1-hp-text'),
+          img: document.getElementById('g1-img'),
+        },
+        {
+          name: document.getElementById('g2-name'),
+          hpFill: document.getElementById('g2-hp-fill'),
+          hpText: document.getElementById('g2-hp-text'),
+          img: document.getElementById('g2-img'),
+        },
+      ],
+    };
+
+    const state = {
+      gladiators: [],
+      round: 0,
+      busy: false,
+      finished: false,
+      audio: null,
+      debugSim: null,
+    };
+
+    // Подборки кнопочных кричалок из словаря бота
+    const CHEER_UP = [
+      "⚔️ Снеси ему кабину!", "⚔️ Переломи его об хуй!", "⚔️ Харкни ему в очко!",
+      "⚔️ Двоечку этой пенсии!", "⚔️ Трахай, родной!", "⚔️ В помоечку!",
+      "⚔️ Туда эту шмару!", "⚔️ Дай ему на клык!", "⚔️ Я щас трусы сниму!",
+      "⚔️ Добить выживших!", "⚔️ Глубже, глубже давай!", "⚔️ Кончай в него! То есть его!!",
+      "⚔️ ЭТОТ ПРИЦЕЛ ПРОСТО ИМБА!",
+    ];
+    const SUCKS = [
+      "🌧 Ну ты и кляча!", "🌧 Вставай, помойка!", "🌧 Вытри сопли и дерись!",
+      "🌧 ГГ, проебали...", "🌧 Ну и на кого я поставил!?", "🌧 Я сейчас выйду тебя добить!",
+      "🌧 Какой же ты ниший!", "🌧 После боя еще и от меня получишь!",
+      "🌧 За что мне этот инвалид!", "🌧 Хватит уже нализывать яйца!",
+    ];
+
+    // ==================== ЗВУК / ХАПТИКА ====================
+    function initAudio() {
+      if (state.audio) return;
+      try { state.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { }
+    }
+
+    function tone(freq, dur = .06, type = "sine", gain = .035) {
+      if (!state.audio) return;
+      const o = state.audio.createOscillator(), g = state.audio.createGain(), now = state.audio.currentTime;
+      o.type = type; o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(gain, now); g.gain.exponentialRampToValueAtTime(.001, now + dur);
+      o.connect(g); g.connect(state.audio.destination);
+      o.start(now); o.stop(now + dur + .02);
+    }
+
+    function hitSound(damage = 0) {
+      if (!state.audio) return;
+      const now = state.audio.currentTime;
+      const baseFreq = 280 + Math.min(1, damage / 24) * 200;
+      const osc = state.audio.createOscillator();
+      const gain = state.audio.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.4, now + 0.08);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+      osc.connect(gain); gain.connect(state.audio.destination);
+      osc.start(now); osc.stop(now + 0.13);
+    }
+
+    function victorySound() {
+      if (!state.audio) return;
+      const now = state.audio.currentTime;
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+        const t = now + i * 0.1;
+        const osc = state.audio.createOscillator();
+        const gain = state.audio.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+        osc.connect(gain); gain.connect(state.audio.destination);
+        osc.start(t); osc.stop(t + 0.18);
+      });
+    }
+
+    function vibrate(kind) {
+      if (DEBUG_MODE) return;
+      if (tg?.HapticFeedback) {
+        try { tg.HapticFeedback.impactOccurred(kind === 'long' ? 'heavy' : 'medium'); } catch (e) { }
+      }
+      if (typeof navigator.vibrate === 'function') {
+        try { navigator.vibrate(kind === 'long' ? [80, 40, 80] : [30, 15, 30]); } catch (e) { }
+      }
+    }
+
+    // ==================== УТИЛИТЫ UI ====================
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+    function showNotification(text, color = '#f3e7bd', duration = 850) {
+      els.notification.textContent = text;
+      els.notification.style.color = color;
+      els.notification.classList.remove('show');
+      void els.notification.offsetWidth;
+      els.notification.classList.add('show');
+      if (duration > 0) setTimeout(() => els.notification.classList.remove('show'), duration);
+    }
+
+    function flash(color = '#63b85b') {
+      els.flash.style.background = color;
+      els.flash.classList.remove('flash');
+      void els.flash.offsetWidth;
+      els.flash.classList.add('flash');
+    }
+
+    function shakeGame() {
+      els.game.classList.remove('shake');
+      void els.game.offsetWidth;
+      els.game.classList.add('shake');
+    }
+
+    function pulseVs() {
+      els.vs.classList.remove('pulse');
+      void els.vs.offsetWidth;
+      els.vs.classList.add('pulse');
+    }
+
+    function appendLog(html) {
+      if (!html) return;
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = html;
+      els.log.appendChild(entry);
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function setPlayerInfo(user) {
+      const user_name = user?.user_name || "";
+      const rawEnergy = user?.energy;
+      const energyNum = Number(rawEnergy);
+      const energy = Number.isFinite(energyNum) ? energyNum : "—";
+
+      ["intro", "game", "result"].forEach(prefix => {
+        const nameEl = document.getElementById(`${prefix}-player-name`);
+        const energyEl = document.getElementById(`${prefix}-player-energy`);
+        if (nameEl) nameEl.innerHTML = user_name;
+        if (energyEl) energyEl.innerHTML = `<span class="energy-value">${energy}</span>`;
+      });
+    }
+
+    function monsterSrc(monsterId) {
+      return `assets/${encodeURIComponent(monsterId)}.png`;
+    }
+
+    function setupArena(gladiators) {
+      state.gladiators = gladiators.map(g => ({ ...g }));
+      gladiators.forEach((g, i) => {
+        const corner = els.corners[i];
+        if (!corner) return;
+        corner.name.textContent = `${g.icon || ''} ${g.name || 'Гладиатор'}`;
+        corner.img.onerror = function () {
+          this.onerror = null;
+          this.src = 'assets/deffault.png';
+        };
+        corner.img.src = monsterSrc(g.monster_id);
+        corner.img.classList.remove('hit', 'death', 'lunge', 'winner', 'low-hp');
+        corner.img.style.opacity = '';
+        setHp(i, g.hp, g.max_hp, true);
+      });
+    }
+
+    function setHp(index, hp, maxHp, instant = false) {
+      const corner = els.corners[index];
+      if (!corner) return;
+      const ratio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
+      if (instant) corner.hpFill.style.transition = 'none';
+      corner.hpFill.style.width = `${ratio * 100}%`;
+      if (instant) {
+        void corner.hpFill.offsetWidth;
+        corner.hpFill.style.transition = '';
+      }
+      corner.hpText.textContent = `HP: ${Math.max(0, hp)} / ${maxHp}`;
+      corner.img.classList.toggle('low-hp', hp > 0 && ratio <= 0.25);
+    }
+
+    function damageFloat(index, text, shield = false) {
+      const corner = els.corners[index];
+      if (!corner) return;
+      const rect = corner.img.getBoundingClientRect();
+      const arenaRect = els.arena.getBoundingClientRect();
+      const float = document.createElement('div');
+      float.className = 'damage-float' + (shield ? ' shield' : '');
+      float.textContent = text;
+      float.style.left = `${rect.left - arenaRect.left + rect.width / 2 - 20}px`;
+      float.style.top = `${rect.top - arenaRect.top + rect.height * 0.25}px`;
+      els.arena.appendChild(float);
+      setTimeout(() => float.remove(), 850);
+    }
+
+    function updateFightLabel() {
+      const pool = Math.random() < 0.65 ? CHEER_UP : SUCKS;
+      els.fightBtn.textContent = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function setButtons(enabled) {
+      els.fightBtn.disabled = !enabled || state.finished;
+      els.skipBtn.disabled = !enabled || state.finished;
+    }
+
+    // ==================== АНИМАЦИЯ РАУНДА ====================
+    async function playRound(rd, fast = false) {
+      state.busy = true;
+      setButtons(false);
+
+      const t = fast
+        ? { lunge: 90, hit: 110 }
+        : { lunge: 420, hit: 460 };
+
+      els.corners.forEach(c => c.img.classList.add('lunge', ...(fast ? ['fast'] : [])));
+      pulseVs();
+      await wait(t.lunge);
+
+      flash('#e95732');
+      shakeGame();
+      vibrate();
+      tone(160, .08, 'sawtooth', .05);
+
+      rd.members.forEach((m, i) => {
+        const prev = state.gladiators[i] ? state.gladiators[i].hp : m.hp;
+        const dmg = Math.max(0, prev - m.hp);
+        const img = els.corners[i].img;
+
+        img.classList.remove('lunge', 'fast');
+
+        if (dmg > 0) {
+          img.classList.remove('hit');
+          void img.offsetWidth;
+          img.classList.add('hit');
+          damageFloat(i, `-${dmg}`);
+          hitSound(dmg);
+        } else if (m.result === 'DEFENDED') {
+          damageFloat(i, '🛡', true);
+          tone(240, .07, 'triangle', .04);
+        }
+
+        setHp(i, m.hp, m.max_hp);
+        if (state.gladiators[i]) state.gladiators[i].hp = m.hp;
+      });
+
+      appendLog(rd.text);
+      state.round = rd.round || state.round + 1;
+
+      await wait(t.hit);
+
+      if (rd.phase === 'BATTLE_END') {
+        await finishBattle(rd, fast);
+      } else {
+        state.busy = false;
+        setButtons(true);
+        updateFightLabel();
+      }
+    }
+
+    async function finishBattle(rd, fast = false) {
+      state.finished = true;
+      setButtons(false);
+
+      rd.members.forEach((m, i) => {
+        const img = els.corners[i].img;
+        if (m.hp <= 0) {
+          img.classList.remove('hit', 'lunge', 'low-hp');
+          img.classList.add('death');
+        } else if (m.is_winner) {
+          img.classList.remove('hit', 'lunge', 'low-hp');
+          img.classList.add('winner');
+        }
+      });
+
+      vibrate('long');
+      await wait(fast ? 500 : 1300);
+
+      const isDraw = rd.is_draw || rd.winner_index == null;
+      const winner = !isDraw ? state.gladiators[rd.winner_index] : null;
+
+      els.resultTitle.textContent = isDraw ? 'НИЧЬЯ!' : 'ПОБЕДИТЕЛЬ!';
+      els.resultTitle.classList.toggle('draw', isDraw);
+      els.resultTitle.classList.remove('celebrate');
+      void els.resultTitle.offsetWidth;
+      els.resultTitle.classList.add('celebrate');
+
+      els.resultWinner.textContent = isDraw
+        ? '💀 Оба легли без дыхания'
+        : `${winner?.icon || ''} ${winner?.name || 'Гладиатор'}`;
+      els.resultText.innerHTML = rd.text || '';
+
+      els.resultOverlay.classList.add('show');
+      victorySound();
+      flash('#63b85b');
+    }
+
+    // ==================== ДЕБАГ-СИМУЛЯЦИЯ ====================
+    const DEBUG_GLADIATORS = Object.freeze([
+      { monster_id: 3, name: 'Бугай Тестовый', description: 'Дебажный гладиатор №1', icon: '🥷', hp: 60, max_hp: 60, style: '⚔️⚔️🛡' },
+      { monster_id: 9, name: 'Гоблин Дебажный', description: 'Дебажный гладиатор №2', icon: '🧙🏿‍♂️', hp: 55, max_hp: 55, style: '⚔️🛡🛡' },
+    ]);
+
+    function debugCreateBattle() {
+      state.debugSim = {
+        round: 0,
+        members: DEBUG_GLADIATORS.map(g => ({ ...g })),
+      };
+      return {
+        battle: {
+          game_mode: 'gladiators',
+          round: 0,
+          phase: 'MOTION',
+          gladiators: DEBUG_GLADIATORS.map(g => ({ ...g })),
+        },
+        intro: '📣 <b>[DEBUG]</b> Под общие овации на арену выбрасывают дебажных гладиаторов!',
+      };
+    }
+
+    function debugRunRound() {
+      const sim = state.debugSim;
+      if (!sim) return null;
+      sim.round += 1;
+
+      const results = sim.members.map(() => null);
+      sim.members.forEach((m, i) => {
+        const target = sim.members[1 - i];
+        if (target.hp <= 0 || m.hp <= 0) return;
+        if (Math.random() < 0.2) {
+          results[1 - i] = 'DEFENDED';
+          return;
+        }
+        const dmg = 2 + Math.floor(Math.random() * 11);
+        target.hp = Math.max(0, target.hp - dmg);
+        results[1 - i] = target.hp <= 0 ? 'KILLED' : 'DAMAGED';
+      });
+
+      const dead = sim.members.filter(m => m.hp <= 0);
+      const ended = dead.length > 0;
+      const draw = dead.length === 2;
+      const winnerIndex = ended && !draw ? (sim.members[0].hp <= 0 ? 1 : 0) : null;
+
+      const logParts = sim.members.map((m, i) => {
+        const r = results[i];
+        if (r === 'KILLED') return `💀 <code>${m.name}</code> сдох, обоссавшись и обосравшись!`;
+        if (r === 'DAMAGED') return `🩸 <code>${m.name}</code> драматично берется за окровавленное место`;
+        if (r === 'DEFENDED') return `🛡 <code>${m.name}</code> отпрыгивает в последний момент`;
+        return `<code>${m.name}</code> удивляется пассивностью противника`;
+      });
+
+      return {
+        round: sim.round,
+        phase: ended ? 'BATTLE_END' : 'MOTION',
+        text: `⚔️ <b>ДРЫНОстояние!</b>⚔️ <code>Раунд: ${sim.round}</code><br><br>${logParts.join('<br>')}`,
+        members: sim.members.map((m, i) => ({
+          monster_id: m.monster_id, name: m.name, icon: m.icon,
+          hp: m.hp, max_hp: m.max_hp,
+          result: results[i] === 'KILLED' ? 'KILLED' : (results[i] || 'NONE'),
+          is_winner: winnerIndex === i,
+        })),
+        winner_index: winnerIndex,
+        is_draw: draw,
+      };
+    }
+
+    // ==================== БОЙ ====================
+    async function onFight() {
+      if (state.busy || state.finished) return;
+      initAudio();
+      state.audio?.resume();
+
+      try {
+        let rd;
+        if (DEBUG_MODE) {
+          rd = debugRunRound();
+          if (!rd) throw new Error('Debug battle is not initialized');
+        } else {
+          const payload = await apiRequest('/gladiators/fight', { method: 'POST' });
+          rd = payload.round;
+        }
+        await playRound(rd, false);
+      } catch (error) {
+        console.error('[gladiators] fight failed:', error);
+        state.busy = false;
+        setButtons(true);
+        showNotification('ОШИБКА БОЯ', '#e95732');
+        if (String(error.message).includes('No active')) {
+          await wait(900);
+          els.game.classList.remove('visible');
+          els.intro.classList.add('show');
+        }
+      }
+    }
+
+    async function onSkip() {
+      if (state.busy || state.finished) return;
+      initAudio();
+      state.audio?.resume();
+      state.busy = true;
+      setButtons(false);
+
+      try {
+        let rounds;
+        if (DEBUG_MODE) {
+          rounds = [];
+          let guard = 0;
+          while (guard++ < 100) {
+            const rd = debugRunRound();
+            if (!rd) break;
+            rounds.push(rd);
+            if (rd.phase === 'BATTLE_END') break;
+          }
+        } else {
+          const payload = await apiRequest('/gladiators/skip', { method: 'POST' });
+          rounds = payload.rounds || [];
+        }
+
+        for (const rd of rounds) {
+          await playRound(rd, true);
+          if (rd.phase === 'BATTLE_END') break;
+        }
+      } catch (error) {
+        console.error('[gladiators] skip failed:', error);
+        showNotification('ОШИБКА ПРОПУСКА', '#e95732');
+      } finally {
+        state.busy = false;
+        if (!state.finished) setButtons(true);
+      }
+    }
+
+    // ==================== СТАРТ / ЗАГРУЗКА ====================
+    const loaderState = { current: 0, target: 0, raf: null, startTime: 0 };
+
+    function setLoadingProgress(value) {
+      loaderState.target = Math.max(0, Math.min(100, value));
+      if (!loaderState.startTime) loaderState.startTime = performance.now();
+      if (!loaderState.raf) loaderState.raf = requestAnimationFrame(animateLoader);
+    }
+
+    function animateLoader(timestamp) {
+      const elapsed = timestamp - loaderState.startTime;
+      const minDuration = 1200;
+
+      let effectiveTarget = loaderState.target;
+      if (effectiveTarget === 100 && elapsed < minDuration) {
+        effectiveTarget = (elapsed / minDuration) * 100;
+      }
+
+      const diff = effectiveTarget - loaderState.current;
+      if (diff > 0.1) loaderState.current += diff * 0.15;
+      else loaderState.current = effectiveTarget;
+
+      updateLoaderVisuals(loaderState.current);
+
+      if (loaderState.current >= 99.9 && loaderState.target === 100 && elapsed >= minDuration) {
+        loaderState.current = 100;
+        updateLoaderVisuals(100);
+        loaderState.raf = null;
+        return;
+      }
+      loaderState.raf = requestAnimationFrame(animateLoader);
+    }
+
+    function updateLoaderVisuals(value) {
+      const p = Math.max(0, Math.min(100, value));
+      const fill = document.querySelector('.battle-loading-progress-fill');
+      if (fill) fill.style.width = `${p}%`;
+
+      const text = document.querySelector('.battle-loading-progress-text');
+      if (text) {
+        text.style.background = `linear-gradient(90deg, #10251d 0%, #10251d ${p}%, #e7d79e ${p}%, #e7d79e 100%)`;
+        text.style.webkitBackgroundClip = 'text';
+        text.style.backgroundClip = 'text';
+        text.style.color = 'transparent';
+        text.style.textShadow = 'none';
+      }
+    }
+
+    function resetArenaState() {
+      state.round = 0;
+      state.busy = false;
+      state.finished = false;
+      els.log.innerHTML = '';
+      els.resultOverlay.classList.remove('show');
+      els.corners.forEach(c => {
+        c.img.classList.remove('hit', 'death', 'lunge', 'winner', 'fast', 'low-hp');
+      });
+      setButtons(true);
+      updateFightLabel();
+    }
+
+    function enterArena(battle, intro) {
+      resetArenaState();
+      setupArena(battle.gladiators || []);
+      els.intro.classList.remove('show');
+      els.game.classList.add('visible');
+      if (intro) appendLog(intro);
+    }
+
+    async function startArenaBattle(sourceBtn = null) {
+      if (sourceBtn) sourceBtn.disabled = true;
+      initAudio();
+      state.audio?.resume();
+
+      try {
+        let payload;
+        if (DEBUG_MODE) {
+          payload = debugCreateBattle();
+        } else {
+          payload = await apiRequest('/gladiators/start', { method: 'POST' });
+        }
+        if (!payload.battle?.gladiators?.length) throw new Error('API не вернул гладиаторов');
+        setPlayerInfo(payload.user);
+        enterArena(payload.battle, payload.intro);
+      } catch (error) {
+        console.error('[gladiators] start failed:', error);
+        if (error.code === 'cooldown') {
+          showNotification(`КУЛДАУН: ${error.message}`, '#e95732', 2400);
+        } else {
+          showNotification('НЕ УДАЛОСЬ НАЧАТЬ', '#e95732');
+        }
+      } finally {
+        if (sourceBtn) sourceBtn.disabled = false;
+      }
+    }
+
+    function setupEventListeners() {
+      els.fightBtn.addEventListener('click', () => void onFight());
+      els.skipBtn.addEventListener('click', () => void onSkip());
+      document.getElementById('arena-start-btn').addEventListener('click', function () {
+        void startArenaBattle(this);
+      });
+      document.getElementById('again-btn').addEventListener('click', function () {
+        void startArenaBattle(this);
+      });
+      document.getElementById('intro-exit-btn').addEventListener('click', () => { if (tg) tg.close(); });
+      document.getElementById('result-exit-btn').addEventListener('click', () => { if (tg) tg.close(); });
+    }
+
+    async function boot() {
+      setLoadingProgress(8);
+      await loadEnvConfig();
+      setLoadingProgress(30);
+
+      if (DEBUG_MODE) {
+        els.debugLabel.hidden = false;
+        els.debugLabel.textContent = 'DEBUG РЕЖИМ · ?debug=1';
+        setPlayerInfo({ user_name: 'ДЕБАГГЕР', energy: '∞' });
+        setLoadingProgress(100);
+        await wait(400);
+        els.loading.classList.add('hidden');
+        els.intro.classList.add('show');
+        return;
+      }
+
+      if (!tg) {
+        setLoadingProgress(100);
+        els.loading.classList.add('hidden');
+        els.intro.classList.add('show');
+        showNotification('ОТКРОЙ В ТЕЛЕГРАМЕ', '#e95732', 2400);
+        return;
+      }
+
+      try {
+        const payload = await apiRequest('/gladiators');
+        setLoadingProgress(65);
+        setPlayerInfo(payload.user);
+
+        if (payload.battle && payload.battle.phase !== 'BATTLE_END') {
+          enterArena(payload.battle, payload.last_status);
+        }
+        setLoadingProgress(100);
+        await wait(400);
+        els.loading.classList.add('hidden');
+        if (!payload.battle || payload.battle.phase === 'BATTLE_END') {
+          els.intro.classList.add('show');
+        }
+      } catch (error) {
+        console.error('[gladiators] boot failed:', error);
+        setLoadingProgress(100);
+        els.loading.classList.add('hidden');
+        els.intro.classList.add('show');
+        showNotification('НЕТ СВЯЗИ С АРЕНОЙ', '#e95732', 2400);
+      }
+    }
+
+    setupEventListeners();
+    void boot();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !DEBUG_MODE && !state.busy && !state.finished) {
+        window.location.reload();
+      }
+    });
+  </script>
+</body>
+
+</html>
